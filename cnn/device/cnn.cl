@@ -34,7 +34,7 @@ float relu(float in)
 
 
 // TODO: Build a CNN!
-__attribute__((reqd_work_group_size(10000,1,1))) // change this to change workgroup size
+__attribute__((reqd_work_group_size(100,1,1))) // change this to change workgroup size
 __kernel void linear_classifier(global const unsigned char * restrict images, 
 								constant float * restrict conv1_weights,
 								constant float * restrict conv1_bias,
@@ -57,8 +57,11 @@ __kernel void linear_classifier(global const unsigned char * restrict images,
 	/* CONV LAYER 1 */
 
 	/* MAXPOOL LAYER 1 */
+  #pragma unroll
   for (int row = 0; row < POOL1_DIM; row++) {
+    #pragma unroll
     for (int col = 0; col < POOL1_DIM; col++) {
+      #pragma unroll
       for (int fil = 0; fil < CONV1_FILTER; fil++) {
         pool1_out[POOL1_DIM*CONV1_FILTER*row + CONV1_FILTER*col + fil] =
             largest_four(conv1_out[CONV1_OUT_SIDE*CONV1_FILTER*(2*row) + CONV1_FILTER*(2*col) + fil],
@@ -72,8 +75,11 @@ __kernel void linear_classifier(global const unsigned char * restrict images,
 	/* CONV LAYER 2 */
 
 	/* MAXPOOL LAYER 2 */
+  #pragma unroll
   for (int row = 0; row < POOL2_DIM; row++) {
+    #pragma unroll
     for (int col = 0; col < POOL2_DIM; col++) {
+      #pragma unroll
       for (int fil = 0; fil < CONV2_FILTER; fil++) {
         pool2_out[POOL2_DIM*CONV2_FILTER*row + CONV2_FILTER*col + fil] =
             largest_four(conv2_out[CONV2_OUT_SIDE*CONV2_FILTER*(2*row) + CONV2_FILTER*(2*col) + fil],
@@ -85,7 +91,9 @@ __kernel void linear_classifier(global const unsigned char * restrict images,
   }
 
 	/* DENSE LAYER */
+  #pragma unroll
   for (int r = 0; r < DENSE1_SIZE; r++) {
+    #pragma unroll
     for (int l = 0; l < DENSE1_INPUT_DIM; l++) {
       dense1_out[r] += dense1_weights[l*DENSE1_SIZE+r] * pool2_out[l];
     }
@@ -94,7 +102,9 @@ __kernel void linear_classifier(global const unsigned char * restrict images,
   }
 
 	/* DENSE 2 */
+  #pragma unroll
   for (int r = 0; r < DENSE2_SIZE; r++) {
+    #pragma unroll
     for (int l = 0; l < DENSE1_SIZE; l++) {
       dense2_out[r] += dense2_weights[l*DENSE2_SIZE+r] * dense1_out[l];
     }
@@ -106,5 +116,5 @@ __kernel void linear_classifier(global const unsigned char * restrict images,
   unsigned char guess = 0;
   for (unsigned char i = 1; i < 10; i++)
     if (dense2_out[i] > dense2_out[guess]) guess = i;
-	guesses[get_global_id(0)] = 0;
+	guesses[get_global_id(0)] = guess;
 }
