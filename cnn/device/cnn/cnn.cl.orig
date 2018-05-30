@@ -1,15 +1,4 @@
 // TODO: Define any constants you'll need
-#define ARRAY_DIM 784
-#define CONV1_SIZE 5
-#define CONV1_INPUT_DIM 1
-#define CONV1_FILTER 32
-#define CONV2_SIZE 5
-#define CONV2_INPUT_DIM 32
-#define CONV2_FILTER 64
-#define DENSE1_SIZE 256
-#define DENSE1_INPUT_DIM (7*7*64)
-#define DENSE2_SIZE 10
-#define DENSE2_INPUT_DIM (256*1*1)
 // image is a 28x28xN array (N images) of bytes (each pixel is 8 bit grayscale)
 
 // TODO: If you decide you'd like to write helper functions, you can define them here
@@ -28,25 +17,26 @@ __kernel void linear_classifier(global const unsigned char * restrict images,
 								constant float * restrict dense2_bias,
 								global unsigned char * restrict guesses)
 {
-  int img_arr_idx = get_global_id(0) * ARRAY_DIM;
-  float conv1_out[28 * 28 *32];
-  float pool1_out[14 * 14 * 32];
-  float conv2_out[14 * 14 * 64];
-  float pool2_out[7 * 7 * 64];
-  float dense1_out[DENSE1_SIZE];
-  float dense2_out[DENSE2_SIZE];
-
 	/* CONV LAYER 1 */
+  printf("%f\n", images[0]);
+  //printf("conv1_W_0: %f\n", conv1_weights[0]);
+  //printf("conv1_b_0: %f\n", conv1_bias[0]);
 
 	/* MAXPOOL LAYER 1 */
 
 	/* CONV LAYER 2 */
+  //printf("conv2_W_0: %f\n", conv2_weights[0]);
+  //printf("conv2_b_0: %f\n", conv2_bias[0]);
 
 	/* MAXPOOL LAYER 2 */
 
 	/* DENSE LAYER */
+  //printf("dense1_W_0: %f\n", dense1_weights[0]);
+  //printf("dense1_b_0: %f\n", dense1_bias[0]);
 
 	/* DENSE 2 */
+  //printf("dense2_W_0: %f\n", dense2_weights[0]);
+  //printf("dense2_b_0: %f\n", dense2_bias[0]);
 	
 	/* FINAL GUESS */
 	guesses[get_global_id(0)] = 0;

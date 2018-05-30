@@ -4,10 +4,13 @@
 #include <ctype.h>
 #include <string.h>
 #include <sys/time.h>
+#include <iostream>
+#include <fstream>
 #include "defines.h"
 #include "CL/opencl.h"
 #include "AOCLUtils/aocl_utils.h"
 
+using namespace std;
 using namespace aocl_utils;
 
 unsigned int convert_endian_4bytes(unsigned int input){
@@ -41,6 +44,32 @@ bool read_weights_file(char *filename, float *weights) {
 		return false;
 	}
 	return true;
+}
+
+bool read_weights_file(char *filename, float *weights, int num_weights) {
+  /*
+	FILE *f = fopen(filename, "rb");
+	if (f == NULL){
+		printf("ERROR: could not open %s\n",filename);
+		return false;
+	}
+	int read_elements = fread(weights, sizeof(float), num_weights, f);
+  printf("Read %d elements from %s\n", read_elements, filename);
+	fclose(f);
+	
+	if (read_elements != num_weights){
+		printf("ERROR: read incorrect number of weights from %s, correct: %d, actual: %d\n",
+           filename, num_weights, read_elements);
+		return false;
+	}
+	return true;
+  */
+  ifstream in(filename);
+  for (int i = 0; i < num_weights; i++) {
+    in >> weights[i];
+  }
+  // printf("From %s, First element read: %f, last: %f\n", filename, weights[0], weights[num_weights-1]);
+  return true;
 }
 
 

@@ -1,0 +1,6 @@
+Compiler Command: aoc -march=emulator -v -board-package=/usr/local/intelFPGA/17.1/hld/board/s5_ref cnn.cl -o cnn.aocx
+/home/zhihanj/EE292A-lab2/cnn/device/cnn.cl:21:12: warning: conversion specifies type 'double' but the argument has type 'unsigned char'
+  printf("%f\n", images[0]);
+          ~^     ~~~~~~~~~
+          %hhu
+1 warning generated.
