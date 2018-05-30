@@ -1,0 +1,1 @@
+Compiler Command: aoc -march=emulator -v -board-package=/usr/local/intelFPGA/17.1/hld/board/s5_ref cnn.cl -o cnn_emu.aock

@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<board name="EmulatorDevice">
+	<kernel name="linear_classifier" num_args="10" >
+		<argument index="0" name="images" opencl_access_type="2" type_qualifier="3" access_qualifier="0" type_name="uchar*" >
+		</argument>
+		<argument index="1" name="conv1_weights" opencl_access_type="3" type_qualifier="3" access_qualifier="0" type_name="float*" >
+		</argument>
+		<argument index="2" name="conv1_bias" opencl_access_type="3" type_qualifier="3" access_qualifier="0" type_name="float*" >
+		</argument>
+		<argument index="3" name="conv2_weights" opencl_access_type="3" type_qualifier="3" access_qualifier="0" type_name="float*" >
+		</argument>
+		<argument index="4" name="conv2_bias" opencl_access_type="3" type_qualifier="3" access_qualifier="0" type_name="float*" >
+		</argument>
+		<argument index="5" name="dense1_weights" opencl_access_type="3" type_qualifier="3" access_qualifier="0" type_name="float*" >
+		</argument>
+		<argument index="6" name="dense1_bias" opencl_access_type="3" type_qualifier="3" access_qualifier="0" type_name="float*" >
+		</argument>
+		<argument index="7" name="dense2_weights" opencl_access_type="3" type_qualifier="3" access_qualifier="0" type_name="float*" >
+		</argument>
+		<argument index="8" name="dense2_bias" opencl_access_type="3" type_qualifier="3" access_qualifier="0" type_name="float*" >
+		</argument>
+		<argument index="9" name="guesses" opencl_access_type="2" type_qualifier="2" access_qualifier="0" type_name="uchar*" >
+		</argument>
+	</kernel>
+</board>

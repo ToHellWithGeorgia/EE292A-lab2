@@ -4,6 +4,8 @@
 #define CONV1_INPUT_DIM 1
 #define CONV1_FILTER 32
 #define CONV1_OUT_SIDE 28
+#define CONV1_PAD 32
+#define CONV1_PAD_IND (CONV1_SIZE-1)*0.5
 #define POOL1_DIM 14
 #define CONV2_SIZE 5
 #define CONV2_INPUT_DIM 32
@@ -54,8 +56,47 @@ __kernel void linear_classifier(global const unsigned char * restrict images,
   float dense1_out[DENSE1_SIZE] = {0.0};
   float dense2_out[DENSE2_SIZE] = {0.0};
 
-	/* CONV LAYER 1 */
 
+	/* CONV LAYER 1 */
+	unsigned char pad_images_layer1[CONV1_PAD * CONV1_PAD];
+	#pragma unroll
+	for (int row=0; row<CONV1_PAD; row++)
+	{
+		#pragma unroll
+		for(col=0; col<CONV1_PAD; col++)
+		{
+			if(row<CONV1_PAD_IND || col<CONV1_PAD_IND || row>(CONV1_PAD-CONV1_PAD_IND) || col>(CONV1_PAD-CONV1_PAD_IND)) 
+				pad_images_layer1[CONV1_PAD*row+col] = 0;
+			else pad_images_layer1[CONV1_PAD*row+col] = images((row-CONV1_PAD_IND)*CONV1_OUT_SIDE+(col-CONV1_PAD_IND));
+		}
+	}
+	#pragma unroll
+	for (int row=CONV1_PAD_IND; row<(CONV1_PAD-CONV1_PAD_IND); row++)
+	{
+		#pragma unroll
+		for(int col=CONV1_PAD_IND; col<(CONV1_PAD-CONV1_PAD_IND); col++) 
+		{
+			#pragma unroll
+	    	for(int chan=0; chan<CONV1_FILTER; chan++)
+			{  
+				float result=NULL;
+				#pragma unroll
+				for(int row_flt=0; row_flt<CONV1_SIZE; row_flt++)
+				{	
+					#pragma unroll
+					for(int col_flt=0; col_flt<CONV1_SIZE; col_flt++)
+					{
+						result+= 
+							pad_images_layer1[CONV1_PAD*(row+row_flt-CONV1_PAD_IND)+(col+col_flt-CONV1_PAD_IND)]*
+								conv1_weights[row_flt*CONV1_SIZE+col_flt];
+					}
+				}
+				result += conv1_bias[chan];
+				conv1_out[(row-CONV1_OUT_SIDE)*CONV1_OUT_SIDE*CONV1_FILTER+(col-CONV1_PAD_IND)*CONV1_FILTER+chan] = result;
+			}
+		}
+	}	
+		
 	/* MAXPOOL LAYER 1 */
   #pragma unroll
   for (int row = 0; row < POOL1_DIM; row++) {
