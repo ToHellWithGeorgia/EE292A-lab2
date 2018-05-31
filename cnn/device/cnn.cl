@@ -147,7 +147,7 @@ float conv2_convolve(int row, int col, int fil, OPENCL_FLOATP conv2_W,
 /*--------------------MAIN KERNEL FUNCTION-------------------*/
 
 // TODO: Build a CNN!
-__attribute__((reqd_work_group_size(100,1,1))) // change this to change workgroup size
+__attribute__((reqd_work_group_size(10000,1,1))) // change this to change workgroup size
 __kernel void linear_classifier(global const unsigned char * restrict images, 
 								constant float * restrict conv1_weights,
 								constant float * restrict conv1_bias,
@@ -251,7 +251,9 @@ __kernel void linear_classifier(global const unsigned char * restrict images,
 	
 	/* FINAL GUESS */
   unsigned char guess = 0;
+  #pragma unroll
   for (unsigned char i = 1; i < 10; i++)
     if (dense2_out[i] > dense2_out[guess]) guess = i;
 	guesses[get_global_id(0)] = guess;
+  printf("%lu finished. ", get_global_id(0));
 }

@@ -144,9 +144,10 @@ float conv2_convolve(int row, int col, int fil, OPENCL_FLOATP conv2_W,
   return res;
 }
 
+/*--------------------MAIN KERNEL FUNCTION-------------------*/
 
 // TODO: Build a CNN!
-__attribute__((reqd_work_group_size(100,1,1))) // change this to change workgroup size
+__attribute__((reqd_work_group_size(10000,1,1))) // change this to change workgroup size
 __kernel void linear_classifier(global const unsigned char * restrict images, 
 								constant float * restrict conv1_weights,
 								constant float * restrict conv1_bias,
@@ -168,46 +169,6 @@ __kernel void linear_classifier(global const unsigned char * restrict images,
 
 
 	/* CONV LAYER 1 */
-  /*
-	unsigned char pad_images_layer1[CONV1_PAD * CONV1_PAD];
-	#pragma unroll
-	for (int row=0; row<CONV1_PAD; row++)
-	{
-		#pragma unroll
-		for(col=0; col<CONV1_PAD; col++)
-		{
-			if(row<CONV1_PAD_IND || col<CONV1_PAD_IND || row>(CONV1_PAD-CONV1_PAD_IND) || col>(CONV1_PAD-CONV1_PAD_IND)) 
-				pad_images_layer1[CONV1_PAD*row+col] = 0;
-			else pad_images_layer1[CONV1_PAD*row+col] = images((row-CONV1_PAD_IND)*CONV1_OUT_SIDE+(col-CONV1_PAD_IND));
-		}
-	}
-	#pragma unroll
-	for (int row=CONV1_PAD_IND; row<(CONV1_PAD-CONV1_PAD_IND); row++)
-	{
-		#pragma unroll
-		for(int col=CONV1_PAD_IND; col<(CONV1_PAD-CONV1_PAD_IND); col++) 
-		{
-			#pragma unroll
-	    	for(int chan=0; chan<CONV1_FILTER; chan++)
-			{  
-				float result=NULL;
-				#pragma unroll
-				for(int row_flt=0; row_flt<CONV1_SIZE; row_flt++)
-				{	
-					#pragma unroll
-					for(int col_flt=0; col_flt<CONV1_SIZE; col_flt++)
-					{
-						result+= 
-							pad_images_layer1[CONV1_PAD*(row+row_flt-CONV1_PAD_IND)+(col+col_flt-CONV1_PAD_IND)]*
-								conv1_weights[row_flt*CONV1_SIZE+col_flt];
-					}
-				}
-				result += conv1_bias[chan];
-				conv1_out[(row-CONV1_OUT_SIDE)*CONV1_OUT_SIDE*CONV1_FILTER+(col-CONV1_PAD_IND)*CONV1_FILTER+chan] = result;
-			}
-		}
-	}	
-  */
 	#pragma unroll
   for (int row = 0; row < CONV1_OUT_SIDE; row++) {
     #pragma unroll
@@ -293,4 +254,5 @@ __kernel void linear_classifier(global const unsigned char * restrict images,
   for (unsigned char i = 1; i < 10; i++)
     if (dense2_out[i] > dense2_out[guess]) guess = i;
 	guesses[get_global_id(0)] = guess;
+  printf("%lu finished. ", get_global_id(0));
 }
