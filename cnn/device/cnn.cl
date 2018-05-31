@@ -1,5 +1,6 @@
 // TODO: Define any constants you'll need
 #define ARRAY_DIM 784
+#define IMG_DIM 28
 #define CONV1_SIZE 5
 #define CONV1_INPUT_DIM 1
 #define CONV1_FILTER 32
@@ -16,9 +17,15 @@
 #define DENSE1_INPUT_DIM (7*7*64)
 #define DENSE2_SIZE 10
 #define DENSE2_INPUT_DIM (256*1*1)
+#define OPENCL_FLOATP const __attribute__((address_space(16776962))) float *restrict
+#define OPENCL_UCHARP const __attribute__((address_space(16776960))) unsigned char *restrict
 // image is a 28x28xN array (N images) of bytes (each pixel is 8 bit grayscale)
 
 // TODO: If you decide you'd like to write helper functions, you can define them here
+
+
+/*--------------------MAXPOOL HELPER FUNCTION-------------------*/
+/* Function to calculate the largest number of the 4. */
 float largest_four(float a, float b, float c, float d)
 {
   float ret = a;
@@ -28,12 +35,116 @@ float largest_four(float a, float b, float c, float d)
   return ret;
 }
 
+/* ReLU function. */
 float relu(float in)
 {
   return in > 0 ? in : 0;
 }
 
+/*--------------------CONV1 HELPER FUNCTION-------------------*/
+float conv1_input_ind(int filrow, int filcol, int filcnl, int row, int col,
+                      OPENCL_UCHARP images, int img_idx)
+{
+  /* Calculate the offset to index the input array. */
+  int offset_row = filrow - CONV1_SIZE/2;
+  int offset_col = filcol - CONV1_SIZE/2;
+  int indrow = row + offset_row;
+  int indcol = col + offset_col;
+  /* This is the handle of padding. */
+  if (indrow < 0 || indrow > IMG_DIM || indcol < 0 || indcol > IMG_DIM)
+    return 0.0;
 
+  float res = 0.0;
+  res = images[img_idx + IMG_DIM*CONV1_INPUT_DIM*indrow +
+               CONV1_INPUT_DIM*indcol + filcnl];
+  return (float)res;
+}
+
+float conv1_weight_ind(int filrow, int filcol, int filcnl, int fil,
+                       OPENCL_FLOATP conv1_weights)
+{
+  /* conv1 weights is 5x5x1x32, row col cnl filter. */
+  float res = 0.0;
+  res = conv1_weights[CONV1_SIZE*CONV1_INPUT_DIM*CONV1_FILTER*filrow +
+                      CONV1_INPUT_DIM*CONV1_FILTER*filcol +
+                      CONV1_FILTER*filcnl + fil];
+  return res;
+}
+
+float conv1_convolve(int row, int col, int fil, OPENCL_FLOATP conv1_W,
+                     OPENCL_FLOATP conv1_b, OPENCL_UCHARP images, int img_idx)
+{
+  float res = 0.0;
+  /* CONV2 filter has 5x5x1 size, 32 filters*/
+  #pragma unroll
+  for (int filrow = 0; filrow < CONV1_SIZE; filrow++) {
+    #pragma unroll
+    for (int filcol = 0; filcol < CONV1_SIZE; filcol++) {
+      #pragma unroll
+      for (int filcnl = 0; filcnl < CONV1_INPUT_DIM; filcnl++) {
+        res += conv1_input_ind(filrow, filcol, filcnl, row, col, images, img_idx) *
+               conv1_weight_ind(filrow, filcol, filcnl, fil, conv1_W);
+      }
+    }
+  }
+  res += conv1_b[fil];
+  res = relu(res);
+  return res;
+}
+
+/*--------------------CONV2 HELPER FUNCTION-------------------*/
+
+float conv2_input_ind(int filrow, int filcol, int filcnl, int row, int col,
+                      float* pool1_out)
+{
+  /* Calculate the offset to index the input array. */
+  int offset_row = filrow - CONV2_SIZE/2;
+  int offset_col = filcol - CONV2_SIZE/2;
+  int indrow = row + offset_row;
+  int indcol = col + offset_col;
+  /* This is the handle of padding. */
+  if (indrow < 0 || indrow > POOL1_DIM || indcol < 0 || indcol > POOL1_DIM)
+    return 0.0;
+
+  float res = 0.0;
+  res = pool1_out[POOL1_DIM*CONV2_INPUT_DIM*indrow +
+                  CONV2_INPUT_DIM*indcol + filcnl]; 
+  return res;
+}
+
+float conv2_weight_ind(int filrow, int filcol, int filcnl, int fil,
+                       OPENCL_FLOATP conv2_weights)
+{
+  /* conv2 weights is 5x5x32x64, row col cnl filter. */
+  float res = 0.0;
+  res = conv2_weights[CONV2_SIZE*CONV2_INPUT_DIM*CONV2_FILTER*filrow +
+                      CONV2_INPUT_DIM*CONV2_FILTER*filcol +
+                      CONV2_FILTER*filcnl + fil];
+  return res;
+}
+
+float conv2_convolve(int row, int col, int fil, OPENCL_FLOATP conv2_W,
+                     OPENCL_FLOATP conv2_b, float* pool1_out)
+{
+  float res = 0.0;
+  /* CONV2 filter has 5x5x32 size, 64 filters*/
+  #pragma unroll
+  for (int filrow = 0; filrow < CONV2_SIZE; filrow++) {
+    #pragma unroll
+    for (int filcol = 0; filcol < CONV2_SIZE; filcol++) {
+      #pragma unroll
+      for (int filcnl = 0; filcnl < CONV2_INPUT_DIM; filcnl++) {
+        res += conv2_input_ind(filrow, filcol, filcnl, row, col, pool1_out) *
+               conv2_weight_ind(filrow, filcol, filcnl, fil, conv2_W);
+      }
+    }
+  }
+  res += conv2_b[fil];
+  res = relu(res);
+  return res;
+}
+
+/*--------------------MAIN KERNEL FUNCTION-------------------*/
 
 // TODO: Build a CNN!
 __attribute__((reqd_work_group_size(100,1,1))) // change this to change workgroup size
@@ -58,45 +169,19 @@ __kernel void linear_classifier(global const unsigned char * restrict images,
 
 
 	/* CONV LAYER 1 */
-	unsigned char pad_images_layer1[CONV1_PAD * CONV1_PAD];
 	#pragma unroll
-	for (int row=0; row<CONV1_PAD; row++)
-	{
-		#pragma unroll
-		for(col=0; col<CONV1_PAD; col++)
-		{
-			if(row<CONV1_PAD_IND || col<CONV1_PAD_IND || row>(CONV1_PAD-CONV1_PAD_IND) || col>(CONV1_PAD-CONV1_PAD_IND)) 
-				pad_images_layer1[CONV1_PAD*row+col] = 0;
-			else pad_images_layer1[CONV1_PAD*row+col] = images((row-CONV1_PAD_IND)*CONV1_OUT_SIDE+(col-CONV1_PAD_IND));
-		}
-	}
-	#pragma unroll
-	for (int row=CONV1_PAD_IND; row<(CONV1_PAD-CONV1_PAD_IND); row++)
-	{
-		#pragma unroll
-		for(int col=CONV1_PAD_IND; col<(CONV1_PAD-CONV1_PAD_IND); col++) 
-		{
-			#pragma unroll
-	    	for(int chan=0; chan<CONV1_FILTER; chan++)
-			{  
-				float result=NULL;
-				#pragma unroll
-				for(int row_flt=0; row_flt<CONV1_SIZE; row_flt++)
-				{	
-					#pragma unroll
-					for(int col_flt=0; col_flt<CONV1_SIZE; col_flt++)
-					{
-						result+= 
-							pad_images_layer1[CONV1_PAD*(row+row_flt-CONV1_PAD_IND)+(col+col_flt-CONV1_PAD_IND)]*
-								conv1_weights[row_flt*CONV1_SIZE+col_flt];
-					}
-				}
-				result += conv1_bias[chan];
-				conv1_out[(row-CONV1_OUT_SIDE)*CONV1_OUT_SIDE*CONV1_FILTER+(col-CONV1_PAD_IND)*CONV1_FILTER+chan] = result;
-			}
-		}
-	}	
-		
+  for (int row = 0; row < CONV1_OUT_SIDE; row++) {
+    #pragma unroll
+    for (int col = 0; col < CONV1_OUT_SIDE; col++) {
+      #pragma unroll
+      for (int fil = 0; fil < CONV1_FILTER; fil++) {
+        conv1_out[CONV1_OUT_SIDE*CONV1_FILTER*row + CONV1_FILTER*col + fil] =
+          conv1_convolve(row, col, fil, conv1_weights, conv1_bias, images, img_arr_idx);
+      }
+    }
+  }
+
+
 	/* MAXPOOL LAYER 1 */
   #pragma unroll
   for (int row = 0; row < POOL1_DIM; row++) {
@@ -114,6 +199,17 @@ __kernel void linear_classifier(global const unsigned char * restrict images,
   }
 
 	/* CONV LAYER 2 */
+  #pragma unroll
+  for (int row = 0; row < CONV2_OUT_SIDE; row++) {
+    #pragma unroll
+    for (int col = 0; col < CONV2_OUT_SIDE; col++) {
+      #pragma unroll
+      for (int fil = 0; fil < CONV2_FILTER; fil++) {
+        conv2_out[CONV2_OUT_SIDE*CONV2_FILTER*row + CONV2_FILTER*col + fil] =
+          conv2_convolve(row, col, fil, conv2_weights, conv2_bias, pool1_out);
+      }
+    }
+  }
 
 	/* MAXPOOL LAYER 2 */
   #pragma unroll
